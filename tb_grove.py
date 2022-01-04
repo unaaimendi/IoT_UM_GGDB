@@ -45,6 +45,7 @@ def main():
     
     GPIO.setmode(GPIO.BCM)
     GPIO.setup(24, GPIO.OUT)
+    GPIO.setup(26, GPIO.IN)
     # Grove - mini PIR motion pir_sensor connected to port D5
     pir_sensor = GroveMiniPIRMotionSensor(5)
 
@@ -81,7 +82,7 @@ def main():
     def LightState():
         light_state = light_sensor.light
         print('light value {}'.format(light_state))
-        if(light_state < 500):
+        if(light_state < 300):
             increaseLight()
         else:
             print("Luz adecuada")
@@ -94,29 +95,42 @@ def main():
         print('Subiendo luz')
         
     def DistanceGrifo():
-        estadoGRIF = False;
-        distanceGRIF = ultrasonic_sensor.get_distance()
-        print('{} cm'.format(distanceGRIF))
-        if 15 > distanceGRIF + 1.5:
-            print('Encendido GRIFO')
-            estadoGRIF = True;
-            instanteInicial = datetime.now()
+        tiempoDeUso = 0
+        seguir = True
+        while seguir == True:
+            estadoGRIF = False;
+            distanceGRIF = ultrasonic_sensor.get_distance()
+            print('{} cm'.format(distanceGRIF))
+            if 15 > distanceGRIF + 1.5:
+                print('Encendido GRIFO')
+                estadoGRIF = True;
+                instanteInicial = datetime.now()
+                if ((datetime.now() - instanteInicial).seconds > 20):
+                    print("Apagando")
 
-        else:
-            print('Apagado')
-            if estadoGRIF == True: 
-                estadoGRIF = False;
+            else:
+                print('Apagado')
+                print(estadoGRIF)
+                #if estadoGRIF: 
+                #    estadoGRIF = False;
             
                 instanteFinal = datetime.now()
                 tiempo = instanteFinal - instanteInicial # Devuelve un objeto timedelta
                 segundos = tiempo.seconds
                 tiempoDeUso += segundos
-        time.sleep(1)
+                print("He llegado")
+                seguir = False
+                return calcularAgua(tiempoDeUso)
+            
     
 
         '''
                     PUERTA
         '''
+
+    def calcularAgua(tiempoDeUso):
+        litros = tiempoDeUso * 0.2
+        return litros
 
     # set backlight to (R,G,B) (values from 0..255 for each)
     def setRGB(r,g,b):
@@ -233,13 +247,16 @@ def main():
         '''
                     
     def grabarNombre():
+        input_state = GPIO.input(26)
+        if input_state == True:
+            nombreTarjeta = input('New data:')
+            print("Now place your tag to write")
+            reader.write(nombreTarjeta)
+            print("Written")
         
-        nombreTarjeta = input('New data:')
-        print("Now place your tag to write")
-        reader.write(nombreTarjeta)
-        print("Written")
-        
-        return(nombreTarjeta)
+            return(nombreTarjeta)
+        else:
+            return("")
         
         '''
             GRABAR PUERTA FIN
@@ -253,12 +270,13 @@ def main():
             print('Encendido SECADOR')
             estadoSEC = True;
             instanteInicial = datetime.now()
-
+            if ((datetime.now() - instanteInicial).seconds > 20):
+                    print("Apagando")
+            
         else:
             print('Apagado')
             if estadoSEC == True: 
                 estadoSEC = False;
-            
                 instanteFinal = datetime.now()
                 tiempo = instanteFinal - instanteInicial # Devuelve un objeto timedelta
                 segundos = tiempo.seconds
@@ -339,7 +357,7 @@ def main():
                 try:
                     text = grabarNombre()
                     tempHum()
-                    DistanceGrifo()
+                    litros = DistanceGrifo()
                     getDistanceSecador()
                     pirSens()
                     text2 = leerPuerta()
@@ -364,6 +382,15 @@ def main():
                 
                 log.debug('leida: {}'.format(text2))
                 
+                log.debug('litros: {}'.format(litros))
+                
+                if distance < 15:
+                    estado_grif = "Encendido"
+                else:
+                    estado_grif = "Apagado"
+                
+                log.debug('seca_grif: {}'.format(estado_grif))
+            
                 #presencia = pir_sensor.on_detect()
                 #log.debug('presencia: {}'.format(presencia))
                 # Formatting the data for sending to ThingsBoard
@@ -373,7 +400,9 @@ def main():
                              'light': light_state,
                              #'presencia': presencia
                              'grabada': text,
-                             'leida': text2}
+                             'leida': text2,
+                             'seca_grif': estado_grif,
+                             'litros': litros}
 
                 # Sending the data
                 client.send_telemetry(telemetry).get()
