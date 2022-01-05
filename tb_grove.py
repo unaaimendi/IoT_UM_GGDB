@@ -70,14 +70,17 @@ def main():
         time.sleep(1)
     
     def increaseTemp():
-        GPIO.output(24, True)
-        time.sleep(0.5)
-        GPIO.output(24, False)
-        time.sleep(0.2)
-        GPIO.output(24, True)
-        time.sleep(0.5)
-        GPIO.output(24, False)
-        print("Subiendo temperatura")
+        try:
+            GPIO.output(24, True)
+            time.sleep(0.5)
+            GPIO.output(24, False)
+            time.sleep(0.2)
+            GPIO.output(24, True)
+            time.sleep(0.5)
+            GPIO.output(24, False)
+            print("Subiendo temperatura")
+        except KeyboardInterrupt:
+                    GPIO.cleanup()
         
     def LightState():
         light_state = light_sensor.light
@@ -89,14 +92,18 @@ def main():
         time.sleep(1)
             
     def increaseLight():
-        GPIO.output(24, True)
-        time.sleep(0.5)
-        GPIO.output(24, False)
-        print('Subiendo luz')
+        try:
+            GPIO.output(24, True)
+            time.sleep(0.5)
+            GPIO.output(24, False)
+            print('Subiendo luz')
+        except KeyboardInterrupt:
+                    GPIO.cleanup()
         
     def DistanceGrifo():
         tiempoDeUso = 0
         seguir = True
+        instanteInicial = datetime.now()
         while seguir == True:
             estadoGRIF = False;
             distanceGRIF = ultrasonic_sensor.get_distance()
@@ -104,7 +111,6 @@ def main():
             if 15 > distanceGRIF + 1.5:
                 print('Encendido GRIFO')
                 estadoGRIF = True;
-                instanteInicial = datetime.now()
                 if ((datetime.now() - instanteInicial).seconds > 20):
                     print("Apagando")
 
@@ -263,25 +269,35 @@ def main():
         '''
                         
     def getDistanceSecador():
-        estadoSEC = False;
-        distanceSEC = ultrasonic_sensor.get_distance()
-        print('{} cm'.format(distanceSEC))
-        if 15 > distanceSEC + 1.5:
-            print('Encendido SECADOR')
-            estadoSEC = True;
-            instanteInicial = datetime.now()
-            if ((datetime.now() - instanteInicial).seconds > 20):
+        tiempoDeUso = 0
+        seguir = True
+        instanteInicial = datetime.now()
+        while seguir == True:
+            estadoSEC = False;
+            distanceSEC = ultrasonic_sensor.get_distance()
+            print('{} cm'.format(distanceSEC))
+            if 15 > distanceSEC + 1.5:
+                print('Encendido SECADOR')
+                estadoSEC = True;
+                if ((datetime.now() - instanteInicial).seconds > 20):
                     print("Apagando")
+
+            else:
+                print('Apagado')
+                print(estadoSEC)
             
-        else:
-            print('Apagado')
-            if estadoSEC == True: 
-                estadoSEC = False;
+            
                 instanteFinal = datetime.now()
                 tiempo = instanteFinal - instanteInicial # Devuelve un objeto timedelta
                 segundos = tiempo.seconds
                 tiempoDeUso += segundos
-        time.sleep(1)
+                print("He llegado")
+                seguir = False
+                return calcularElectricidad(tiempoDeUso)
+            
+    def calcularElectricidad(tiempoDeUso):
+        watios = tiempoDeUso * 0.11
+        return watios
             
     def pirSens():
         # Sense motion, usually human, within the target range
@@ -358,9 +374,9 @@ def main():
                     text = grabarNombre()
                     tempHum()
                     litros = DistanceGrifo()
-                    getDistanceSecador()
                     pirSens()
                     text2 = leerPuerta()
+                    watios = getDistanceSecador()
                 except KeyboardInterrupt:
                     GPIO.cleanup()
                 
@@ -384,6 +400,8 @@ def main():
                 
                 log.debug('litros: {}'.format(litros))
                 
+                log.debug('watios: {}'.format(watios))
+                
                 if distance < 15:
                     estado_grif = "Encendido"
                 else:
@@ -402,7 +420,8 @@ def main():
                              'grabada': text,
                              'leida': text2,
                              'seca_grif': estado_grif,
-                             'litros': litros}
+                             'litros': litros,
+                             'watios': watios}
 
                 # Sending the data
                 client.send_telemetry(telemetry).get()
