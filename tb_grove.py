@@ -14,6 +14,7 @@ from mfrc522 import SimpleMFRC522
 from grove.grove_mini_pir_motion_sensor import GroveMiniPIRMotionSensor
 from datetime import datetime
 
+
 # Configuration of logger, in this case it will send messages to console
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(module)s - %(lineno)d - %(message)s',
@@ -87,6 +88,8 @@ def main():
         print('light value {}'.format(light_state))
         if(light_state < 300):
             increaseLight()
+        elif(light_state > 700):
+            decreaseLight() 
         else:
             print("Luz adecuada")
         time.sleep(1)
@@ -97,6 +100,15 @@ def main():
             time.sleep(0.5)
             GPIO.output(24, False)
             print('Subiendo luz')
+        except KeyboardInterrupt:
+                    GPIO.cleanup()
+                    
+    def decreaseLight():
+        try:
+            GPIO.output(24, True)
+            time.sleep(0.5)
+            GPIO.output(24, False)
+            print('Bajando luz')
         except KeyboardInterrupt:
                     GPIO.cleanup()
         
