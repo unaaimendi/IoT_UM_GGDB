@@ -13,19 +13,15 @@ import RPi.GPIO as GPIO
 from mfrc522 import SimpleMFRC522
 from grove.grove_mini_pir_motion_sensor import GroveMiniPIRMotionSensor
 from datetime import datetime
-import threading
+
 
 # Configuration of logger, in this case it will send messages to console
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(module)s - %(lineno)d - %(message)s',
                     datefmt='%Y-%m-%d %H:%M:%S')
-
 log = logging.getLogger(__name__)
-
 thingsboard_server = 'thingsboard.cloud'
 access_token = 'SYCSlKb2Ku676Tt7OF6H'
-
-
 if sys.platform == 'uwp':
     import winrt_smbus as smbus
     bus = smbus.SMBus(1)
@@ -37,11 +33,9 @@ else:
         bus = smbus.SMBus(1)
     else:
         bus = smbus.SMBus(0)
-
 # this device has two I2C addresses
 DISPLAY_RGB_ADDR = 0x62
 DISPLAY_TEXT_ADDR = 0x3e
-
 def main():
     
     GPIO.setmode(GPIO.BCM)
@@ -49,13 +43,10 @@ def main():
     GPIO.setup(26, GPIO.IN)
     # Grove - mini PIR motion pir_sensor connected to port D5
     pir_sensor = GroveMiniPIRMotionSensor(5)
-
     # Grove - Ultrasonic Ranger connected to port D16
     ultrasonic_sensor = GroveUltrasonicRanger(16)
-
     # Grove - RFID Sensor connected to serial
     reader = SimpleMFRC522()
-
     # Grove - Light Sensor connected to port A0
     light_sensor = GroveLightSensor(0)
     # Grove - Temperature&Humidity Sensor connected to port D22
@@ -102,7 +93,7 @@ def main():
             print('Subiendo luz')
         except KeyboardInterrupt:
                     GPIO.cleanup()
-                    
+
     def decreaseLight():
         try:
             GPIO.output(24, True)
@@ -111,7 +102,7 @@ def main():
             print('Bajando luz')
         except KeyboardInterrupt:
                     GPIO.cleanup()
-        
+
     def DistanceGrifo():
         tiempoDeUso = 0
         seguir = True
@@ -125,7 +116,6 @@ def main():
                 estadoGRIF = True;
                 if ((datetime.now() - instanteInicial).seconds > 20):
                     print("Apagando")
-
             else:
                 print('Apagado')
                 print(estadoGRIF)
@@ -141,16 +131,15 @@ def main():
                 return calcularAgua(tiempoDeUso)
             
     
-
         '''
                     PUERTA
         '''
-
+        
     def calcularAgua(tiempoDeUso):
         litros = tiempoDeUso * 0.2
         aguaData = [litros, tiempoDeUso]
         return aguaData
-
+    
     # set backlight to (R,G,B) (values from 0..255 for each)
     def setRGB(r,g,b):
         bus.write_byte_data(DISPLAY_RGB_ADDR,0,0)
@@ -159,11 +148,9 @@ def main():
         bus.write_byte_data(DISPLAY_RGB_ADDR,4,r)
         bus.write_byte_data(DISPLAY_RGB_ADDR,3,g)
         bus.write_byte_data(DISPLAY_RGB_ADDR,2,b)
-
     # send command to display (no need for external use)
     def textCommand(cmd):
         bus.write_byte_data(DISPLAY_TEXT_ADDR,0x80,cmd)
-
     # set display text \n for second line(or auto wrap)
     def setText(text):
         textCommand(0x01) # clear display
@@ -208,7 +195,6 @@ def main():
             count += 1
             bus.write_byte_data(DISPLAY_TEXT_ADDR,0x40,ord(c))
     
-
     def abrirPuerta():
         print("Puerta abierta")
         
@@ -224,49 +210,45 @@ def main():
         location &= 0x07 # Make sure location is 0-7
         textCommand(0x40 | (location << 3))
         bus.write_i2c_block_data(DISPLAY_TEXT_ADDR, 0x40, pattern)
-
     # example code
     def leerPuerta():
-        while True:
-            a = []
-            print("Pase su tarjeta")
+        
+        print("Pase su tarjeta")
+        setText("Lab 3\nPase su tarjeta")
+        setRGB(0,102,204)
+            
+        idPuerta, nombreTarjeta = reader.read()
+        if (nombreTarjeta.replace(" ","") == "Jon"):
+            setText("Puerta abierta\nCierre al pasar")
+            setRGB(0,255,0)
+            print("Puerta abiera")
+            time.sleep(5)
             setText("Lab 3\nPase su tarjeta")
             setRGB(0,102,204)
-                
-            idPuerta, nombreTarjeta = reader.read()
-            if (nombreTarjeta.replace(" ","") == "Jon"):
-                setText("Puerta abierta\nCierre al pasar")
-                setRGB(0,255,0)
-                print("Puerta abiera")
-                time.sleep(5)
-                setText("Lab 3\nPase su tarjeta")
-                setRGB(0,102,204)
-                a.append("Puerta abierta " + nombreTarjeta.replace(" ",""))
-                return getPuerta(a)
-                        
-            else:
-                setText("\nPermiso denegado")
-                print("Credenciales incorrectas")
-                setRGB(255,0,0)
-                time.sleep(5)
-                setText("Lab 3\nPase su tarjeta")
-                setRGB(0,102,204)
-                a.append("Credenciales incorrectas " + nombreTarjeta.replace(" ",""))
-                return getPuerta(a)
-
+            return("Puerta abierta " + nombreTarjeta.replace(" ",""))
             
-
+            
+            
+                    
+        else:
+            setText("\nPermiso denegado")
+            print("Credenciales incorrectas")
+            setRGB(255,0,0)
+            time.sleep(5)
+            setText("Lab 3\nPase su tarjeta")
+            setRGB(0,102,204)
+            return("Credenciales incorrectas " + nombreTarjeta.replace(" ",""))
+            
+        
+        
+            
         '''
             PUERTA FIN
         '''
         '''
             GRABAR PUERTA
         '''
-    def getPuerta(a):
-        if len(a) > 0:
-            return a
-        else:
-            return a.append("")
+                    
     def grabarNombre():
         input_state = GPIO.input(26)
         if input_state == True:
@@ -296,7 +278,6 @@ def main():
                 estadoSEC = True;
                 if ((datetime.now() - instanteInicial).seconds > 20):
                     print("Apagando")
-
             else:
                 print('Apagado')
                 print(estadoSEC)
@@ -357,12 +338,10 @@ def main():
             client.send_rpc_reply(request_id, distanceSEC, estadoSEC)
     '''
     
-
     # Connecting to ThingsBoard
     client = TBDeviceMqttClient(thingsboard_server, access_token)
     #client.set_server_side_rpc_request_handler(on_server_side_rpc_request)
     client.connect()
-
     '''
     # Callback on detect the motion from motion sensor
     def on_detect():
@@ -377,25 +356,20 @@ def main():
     
     # Callback from button if it was pressed or unpressed
     def on_event():
-
         # Adding the callback to the motion sensor
         #pir_sensor.on_detect = on_detect
         # Adding the callback to the button
         #button.on_event = on_event
         
         try:
-            a = [""]
-            #t = threading.Thread(target=leerPuerta)
-            #t.start()
             while True:
                 
                 try:
-                    #text = grabarNombre()
+                    text = grabarNombre()
                     tempHum()
                     aguaData = DistanceGrifo()
                     pirSens()
-                    #text2 = leerPuerta()
-                    #text2 = getPuerta(a)
+                    text2 = leerPuerta()
                     secadorData = getDistanceSecador()
                 except KeyboardInterrupt:
                     GPIO.cleanup()
@@ -407,25 +381,24 @@ def main():
                 
                 humidity, temperature = dht_sensor.read()
                 log.debug('temperature: {}C, humidity: {}%'.format(temperature, humidity))
-
                 #moisture = moisture_sensor.moisture
                 #log.debug('moisture: {}'.format(moisture))
                 light_state = light_sensor.light
                 log.debug('light: {}'.format(light_state))
                 
                 #text = reader.read()
-                #log.debug('grabada: {}'.format(text))
+                log.debug('grabada: {}'.format(text))
                 
-                #log.debug('leida: {}'.format(text2[0]))
+                log.debug('leida: {}'.format(text2))
                 
                 log.debug('litros: {}'.format(aguaData[0]))
                 
-                log.debug('segundos de agua: {}'.format(aguaData[1]))
-                
                 log.debug('watios: {}'.format(secadorData[0]))
                 
-                log.debug('segundos de secado: {}'.format(secadorData[1]))
-
+                log.debug('segundos_de_agua: {}'.format(aguaData[1]))
+                
+                log.debug('segundos_de_secado: {}'.format(secadorData[1]))
+                
                 if distance < 15:
                     estado_grif = "Encendido"
                 else:
@@ -441,24 +414,21 @@ def main():
                              'humidity': humidity,
                              'light': light_state,
                              #'presencia': presencia
-                             #'grabada': text,
-                             #'leida': text2[0],
+                             'grabada': text,
+                             'leida': text2,
                              'seca_grif': estado_grif,
                              'litros': aguaData[0],
-                             'segundos de agua': aguaData[1],
                              'watios': secadorData[0],
-                             'segundos de secado': secadorData[1]}
-
+                             'segundos_de_agua': aguaData[1],
+                             'segundos_de_secado': secadorData[1]}
                 # Sending the data
                 client.send_telemetry(telemetry).get()
                 
-
                 time.sleep(.1)
         except Exception as e:
             raise e
         finally:
             client.disconnect()
-
     on_event()
 if __name__ == '__main__':
     main()
