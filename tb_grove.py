@@ -385,17 +385,17 @@ def main():
         
         try:
             a = [""]
-            t = threading.Thread(target=leerPuerta)
-            t.start()
+            #t = threading.Thread(target=leerPuerta)
+            #t.start()
             while True:
                 
                 try:
-                    text = grabarNombre()
+                    #text = grabarNombre()
                     tempHum()
                     aguaData = DistanceGrifo()
                     pirSens()
                     #text2 = leerPuerta()
-                    text2 = getPuerta(a)
+                    #text2 = getPuerta(a)
                     secadorData = getDistanceSecador()
                 except KeyboardInterrupt:
                     GPIO.cleanup()
@@ -414,9 +414,9 @@ def main():
                 log.debug('light: {}'.format(light_state))
                 
                 #text = reader.read()
-                log.debug('grabada: {}'.format(text))
+                #log.debug('grabada: {}'.format(text))
                 
-                log.debug('leida: {}'.format(text2[0]))
+                #log.debug('leida: {}'.format(text2[0]))
                 
                 log.debug('litros: {}'.format(aguaData[0]))
                 
@@ -440,9 +440,9 @@ def main():
                              'temperature': temperature,
                              'humidity': humidity,
                              'light': light_state,
-                             'presencia': presencia
-                             'grabada': text,
-                             'leida': text2[0],
+                             #'presencia': presencia
+                             #'grabada': text,
+                             #'leida': text2[0],
                              'seca_grif': estado_grif,
                              'litros': aguaData[0],
                              'segundos de agua': aguaData[1],
