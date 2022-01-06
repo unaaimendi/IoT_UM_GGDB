@@ -13,7 +13,7 @@ import RPi.GPIO as GPIO
 from mfrc522 import SimpleMFRC522
 from grove.grove_mini_pir_motion_sensor import GroveMiniPIRMotionSensor
 from datetime import datetime
-
+import threading
 
 # Configuration of logger, in this case it will send messages to console
 logging.basicConfig(level=logging.INFO,
@@ -148,7 +148,8 @@ def main():
 
     def calcularAgua(tiempoDeUso):
         litros = tiempoDeUso * 0.2
-        return litros
+        aguaData = [litros, tiempoDeUso]
+        return aguaData
 
     # set backlight to (R,G,B) (values from 0..255 for each)
     def setRGB(r,g,b):
@@ -226,35 +227,33 @@ def main():
 
     # example code
     def leerPuerta():
-        
-        print("Pase su tarjeta")
-        setText("Lab 3\nPase su tarjeta")
-        setRGB(0,102,204)
-            
-        idPuerta, nombreTarjeta = reader.read()
-        if (nombreTarjeta.replace(" ","") == "Jon"):
-            setText("Puerta abierta\nCierre al pasar")
-            setRGB(0,255,0)
-            print("Puerta abiera")
-            time.sleep(5)
+        while True:
+            a = []
+            print("Pase su tarjeta")
             setText("Lab 3\nPase su tarjeta")
             setRGB(0,102,204)
-            return("Puerta abierta " + nombreTarjeta.replace(" ",""))
-            
-            
-            
-                    
-        else:
-            setText("\nPermiso denegado")
-            print("Credenciales incorrectas")
-            setRGB(255,0,0)
-            time.sleep(5)
-            setText("Lab 3\nPase su tarjeta")
-            setRGB(0,102,204)
-            return("Credenciales incorrectas " + nombreTarjeta.replace(" ",""))
-            
-        
-        
+                
+            idPuerta, nombreTarjeta = reader.read()
+            if (nombreTarjeta.replace(" ","") == "Jon"):
+                setText("Puerta abierta\nCierre al pasar")
+                setRGB(0,255,0)
+                print("Puerta abiera")
+                time.sleep(5)
+                setText("Lab 3\nPase su tarjeta")
+                setRGB(0,102,204)
+                a.append("Puerta abierta " + nombreTarjeta.replace(" ",""))
+                return getPuerta(a)
+                        
+            else:
+                setText("\nPermiso denegado")
+                print("Credenciales incorrectas")
+                setRGB(255,0,0)
+                time.sleep(5)
+                setText("Lab 3\nPase su tarjeta")
+                setRGB(0,102,204)
+                a.append("Credenciales incorrectas " + nombreTarjeta.replace(" ",""))
+                return getPuerta(a)
+
             
 
         '''
@@ -263,7 +262,11 @@ def main():
         '''
             GRABAR PUERTA
         '''
-                    
+    def getPuerta(a):
+        if len(a) > 0:
+            return a
+        else:
+            return a.append("")
     def grabarNombre():
         input_state = GPIO.input(26)
         if input_state == True:
@@ -309,7 +312,8 @@ def main():
             
     def calcularElectricidad(tiempoDeUso):
         watios = tiempoDeUso * 0.11
-        return watios
+        secadorData = [watios, tiempoDeUso]
+        return secadorData
             
     def pirSens():
         # Sense motion, usually human, within the target range
@@ -380,15 +384,19 @@ def main():
         #button.on_event = on_event
         
         try:
+            a = [""]
+            t = threading.Thread(target=leerPuerta)
+            t.start()
             while True:
                 
                 try:
                     text = grabarNombre()
                     tempHum()
-                    litros = DistanceGrifo()
+                    aguaData = DistanceGrifo()
                     pirSens()
-                    text2 = leerPuerta()
-                    watios = getDistanceSecador()
+                    #text2 = leerPuerta()
+                    text2 = getPuerta(a)
+                    secadorData = getDistanceSecador()
                 except KeyboardInterrupt:
                     GPIO.cleanup()
                 
@@ -408,12 +416,16 @@ def main():
                 #text = reader.read()
                 log.debug('grabada: {}'.format(text))
                 
-                log.debug('leida: {}'.format(text2))
+                log.debug('leida: {}'.format(text2[0]))
                 
-                log.debug('litros: {}'.format(litros))
+                log.debug('litros: {}'.format(aguaData[0]))
                 
-                log.debug('watios: {}'.format(watios))
+                log.debug('segundos de agua: {}'.format(aguaData[1]))
                 
+                log.debug('watios: {}'.format(secadorData[0]))
+                
+                log.debug('segundos de secado: {}'.format(secadorData[1]))
+
                 if distance < 15:
                     estado_grif = "Encendido"
                 else:
@@ -428,12 +440,14 @@ def main():
                              'temperature': temperature,
                              'humidity': humidity,
                              'light': light_state,
-                             #'presencia': presencia
+                             'presencia': presencia
                              'grabada': text,
-                             'leida': text2,
+                             'leida': text2[0],
                              'seca_grif': estado_grif,
-                             'litros': litros,
-                             'watios': watios}
+                             'litros': aguaData[0],
+                             'segundos de agua': aguaData[1],
+                             'watios': secadorData[0],
+                             'segundos de secado': secadorData[1]}
 
                 # Sending the data
                 client.send_telemetry(telemetry).get()
