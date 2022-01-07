@@ -1,7 +1,6 @@
 import logging
 import time,sys
 from tb_device_mqtt import TBDeviceMqttClient, TBPublishInfo
-from grove.grove_mini_pir_motion_sensor import GroveMiniPIRMotionSensor
 from grove.grove_ultrasonic_ranger import GroveUltrasonicRanger
 from Seeed_Python_DHT.seeed_dht import DHT
 from grove.grove_moisture_sensor import GroveMoistureSensor
@@ -41,8 +40,9 @@ def main():
     GPIO.setmode(GPIO.BCM)
     GPIO.setup(24, GPIO.OUT)
     GPIO.setup(26, GPIO.IN)
+    GPIO.setup(5, GPIO.IN)
     # Grove - mini PIR motion pir_sensor connected to port D5
-    pir_sensor = GroveMiniPIRMotionSensor(5)
+    pir_sensor = GPIO.input(5)
     # Grove - Ultrasonic Ranger connected to port D16
     ultrasonic_sensor = GroveUltrasonicRanger(16)
     # Grove - RFID Sensor connected to serial
@@ -297,16 +297,19 @@ def main():
         return secadorData
             
     def pirSens():
+        try:
         # Sense motion, usually human, within the target range
-        print(pir_sensor.on_detect)
-        if (pir_sensor == 1):
-            LightState()
-            print ("Motion Detected")
-        else:
-            print ("-")
+            if (pir_sensor == 1):
+                LightState()
+                return "Movimiento"
+            else:
+                return "-"
  
         # if your hold time is less than this, you might not see as many detections
-        time.sleep(2)
+ 
+        except KeyboardInterrupt:
+            GPIO.cleanup()
+
             
     '''   
     # Callback for server RPC requests (Used for control servo and led blink)
@@ -368,7 +371,7 @@ def main():
                     text = grabarNombre()
                     tempHum()
                     aguaData = DistanceGrifo()
-                    pirSens()
+                    movimiento = pirSens()
                     text2 = leerPuerta()
                     secadorData = getDistanceSecador()
                 except KeyboardInterrupt:
@@ -384,6 +387,9 @@ def main():
                 #moisture = moisture_sensor.moisture
                 #log.debug('moisture: {}'.format(moisture))
                 light_state = light_sensor.light
+                
+                
+                
                 log.debug('light: {}'.format(light_state))
                 
                 #text = reader.read()
@@ -398,6 +404,8 @@ def main():
                 log.debug('segundos_de_agua: {}'.format(aguaData[1]))
                 
                 log.debug('segundos_de_secado: {}'.format(secadorData[1]))
+                
+                log.debug('movimiento: {}'.format(movimiento))
                 
                 if distance < 15:
                     estado_grif = "Encendido"
@@ -420,7 +428,8 @@ def main():
                              'litros': aguaData[0],
                              'watios': secadorData[0],
                              'segundos_de_agua': aguaData[1],
-                             'segundos_de_secado': secadorData[1]}
+                             'segundos_de_secado': secadorData[1],
+                             'movimiento': movimiento}
                 # Sending the data
                 client.send_telemetry(telemetry).get()
                 
