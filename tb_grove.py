@@ -42,7 +42,7 @@ def main():
     GPIO.setup(26, GPIO.IN)
     GPIO.setup(5, GPIO.IN)
     # Grove - mini PIR motion pir_sensor connected to port D5
-    pir_sensor = GPIO.input(5)
+    
     # Grove - Ultrasonic Ranger connected to port D16
     ultrasonic_sensor = GroveUltrasonicRanger(16)
     # Grove - RFID Sensor connected to serial
@@ -297,6 +297,7 @@ def main():
         return secadorData
             
     def pirSens():
+        pir_sensor = GPIO.input(5)
         try:
         # Sense motion, usually human, within the target range
             if (pir_sensor == 1):
@@ -371,7 +372,7 @@ def main():
                     text = grabarNombre()
                     tempHum()
                     aguaData = DistanceGrifo()
-                    movimiento = pirSens()
+                    presencia = pirSens()
                     text2 = leerPuerta()
                     secadorData = getDistanceSecador()
                 except KeyboardInterrupt:
@@ -405,7 +406,7 @@ def main():
                 
                 log.debug('segundos_de_secado: {}'.format(secadorData[1]))
                 
-                log.debug('movimiento: {}'.format(movimiento))
+                log.debug('presencia: {}'.format(presencia))
                 
                 if distance < 15:
                     estado_grif = "Encendido"
@@ -429,7 +430,7 @@ def main():
                              'watios': secadorData[0],
                              'segundos_de_agua': aguaData[1],
                              'segundos_de_secado': secadorData[1],
-                             'movimiento': movimiento}
+                             'presencia': presencia}
                 # Sending the data
                 client.send_telemetry(telemetry).get()
                 
