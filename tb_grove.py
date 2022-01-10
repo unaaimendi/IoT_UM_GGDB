@@ -37,11 +37,12 @@ DISPLAY_RGB_ADDR = 0x62
 DISPLAY_TEXT_ADDR = 0x3e
 def main():
     
+    # Incializacion de pines para sensores GPIO
     GPIO.setmode(GPIO.BCM)
     GPIO.setup(24, GPIO.OUT)
     GPIO.setup(26, GPIO.IN)
     GPIO.setup(5, GPIO.IN)
-    # Grove - mini PIR motion pir_sensor connected to port D5
+    
     
     # Grove - Ultrasonic Ranger connected to port D16
     ultrasonic_sensor = GroveUltrasonicRanger(16)
@@ -52,15 +53,17 @@ def main():
     # Grove - Temperature&Humidity Sensor connected to port D22
     dht_sensor = DHT('11', 22)
     
+    # Metodo que comprueba que la temperatura sea la correcta, en caso contrario se llamara a increaseTemp()
     def tempHum():
         humi, temp = dht_sensor.read()
-        #print('temperature {}C, humidity {}%'.format(temp, humi))
+        
         if(temp < 24):
             increaseTemp()
         else:
             print("Temperatura correcta")
         time.sleep(1)
     
+    # En caso de no ser la temperatura correcta, el buzzer emitira 2 pitidos
     def increaseTemp():
         try:
             GPIO.output(24, True)
@@ -73,7 +76,8 @@ def main():
             print("Subiendo temperatura")
         except KeyboardInterrupt:
                     GPIO.cleanup()
-        
+    
+    # Metodo que se encarga de comprobar que el nivel de luz sea el adecuado, en caso contrario se llamara a increaseLight() o decreaseLight() segun sea necesario
     def LightState():
         light_state = light_sensor.light
         print('light value {}'.format(light_state))
@@ -85,6 +89,7 @@ def main():
             print("Luz adecuada")
         time.sleep(1)
             
+    # En caso de tener un nivel de iluminación bajo el buzzer emitira un pitido
     def increaseLight():
         try:
             GPIO.output(24, True)
@@ -93,7 +98,8 @@ def main():
             print('Subiendo luz')
         except KeyboardInterrupt:
                     GPIO.cleanup()
-
+                    
+    # En caso de tener un nivel de iluminación demasiado alto el buzzer emitira un pitido
     def decreaseLight():
         try:
             GPIO.output(24, True)
@@ -103,6 +109,7 @@ def main():
         except KeyboardInterrupt:
                     GPIO.cleanup()
 
+    # Metodo que se encarga de comprobar si ha de activarse el grifo o no, comprobando la distancia, a su vez calcula el tiempo que el grifo esta encendido
     def DistanceGrifo():
         tiempoDeUso = 0
         seguir = True
@@ -135,12 +142,13 @@ def main():
                     PUERTA
         '''
         
+    # Metodo que calcula el consumo de agua una vez el grifo ha sido apagado despues de uso
     def calcularAgua(tiempoDeUso):
         litros = tiempoDeUso * 0.2
         aguaData = [litros, tiempoDeUso]
         return aguaData
     
-    # set backlight to (R,G,B) (values from 0..255 for each)
+    # Metodo para poder cambiar el color de la LCD Backlight
     def setRGB(r,g,b):
         bus.write_byte_data(DISPLAY_RGB_ADDR,0,0)
         bus.write_byte_data(DISPLAY_RGB_ADDR,1,0)
@@ -195,6 +203,7 @@ def main():
             count += 1
             bus.write_byte_data(DISPLAY_TEXT_ADDR,0x40,ord(c))
     
+    # Metodo que nos notifica que la ùerta ha sido abierta
     def abrirPuerta():
         print("Puerta abierta")
         
@@ -210,7 +219,8 @@ def main():
         location &= 0x07 # Make sure location is 0-7
         textCommand(0x40 | (location << 3))
         bus.write_i2c_block_data(DISPLAY_TEXT_ADDR, 0x40, pattern)
-    # example code
+        
+    # Metodo que lee el sensor RFID para comprobar si ha de abrirse la puerta del Laboratorio o no
     def leerPuerta():
         
         print("Pase su tarjeta")
@@ -248,7 +258,7 @@ def main():
         '''
             GRABAR PUERTA
         '''
-                    
+    # Metodo para grabar nombre en la tarjeta    
     def grabarNombre():
         input_state = GPIO.input(26)
         if input_state == True:
@@ -264,7 +274,8 @@ def main():
         '''
             GRABAR PUERTA FIN
         '''
-                        
+    
+    # Metodo que comprueba si a de encenderse el secador o no y calcula el tiemo que ha estado encendido
     def getDistanceSecador():
         tiempoDeUso = 0
         seguir = True
@@ -287,15 +298,16 @@ def main():
                 tiempo = instanteFinal - instanteInicial # Devuelve un objeto timedelta
                 segundos = tiempo.seconds
                 tiempoDeUso += segundos
-                print("He llegado")
                 seguir = False
                 return calcularElectricidad(tiempoDeUso)
             
+    # Metodo que calcula el consumo electrico del secador en funcion del tiempo de uso del mismo
     def calcularElectricidad(tiempoDeUso):
         watios = tiempoDeUso * 0.11
         secadorData = [watios, tiempoDeUso]
         return secadorData
-            
+           
+    # Metodo que detecta presencia y en caso de haberla comprueba el nivel de la luz 
     def pirSens():
         pir_sensor = GPIO.input(5)
         try:
@@ -312,52 +324,13 @@ def main():
             GPIO.cleanup()
 
             
-    '''   
-    # Callback for server RPC requests (Used for control servo and led blink)
-    def on_server_side_rpc_request(client, request_id, request_body):
-        log.info('received rpc: {}, {}'.format(request_id, request_body))
-        if request_body['method'] == 'getLightState':
-            client.send_rpc_reply(request_id, light_state)
-        elif request_body['method'] == 'getDistanceGrifo':
-            client.send_rpc_reply(request_id, distanceGR)
-        elif request_body['method'] == 'leerPuerta':
-            client.send_rpc_reply(request_id, idPuerta, nombreTarjeta)
-        elif request_body['method'] == 'grabarNombre':
-            client.send_rpc_reply(request_id, nombreTarjeta)
-        elif request_body['method'] == 'getDistanceSecador':
-            client.send_rpc_reply(request_id, distanceSEC, estadoSEC)
-        elif request_body['method'] == 'getDistanceSecador':
-            client.send_rpc_reply(request_id, distanceSEC, estadoSEC)
-        elif request_body['method'] == 'getDistanceSecador':
-            client.send_rpc_reply(request_id, distanceSEC, estadoSEC)
-        elif request_body['method'] == 'getDistanceSecador':
-            client.send_rpc_reply(request_id, distanceSEC, estadoSEC)
-        elif request_body['method'] == 'getDistanceSecador':
-            client.send_rpc_reply(request_id, distanceSEC, estadoSEC)
-        elif request_body['method'] == 'getDistanceSecador':
-            client.send_rpc_reply(request_id, distanceSEC, estadoSEC)
-        elif request_body['method'] == 'getDistanceSecador':
-            client.send_rpc_reply(request_id, distanceSEC, estadoSEC)
-        elif request_body['method'] == 'getDistanceSecador':
-            client.send_rpc_reply(request_id, distanceSEC, estadoSEC)
-    '''
     
     # Connecting to ThingsBoard
     client = TBDeviceMqttClient(thingsboard_server, access_token)
     #client.set_server_side_rpc_request_handler(on_server_side_rpc_request)
     client.connect()
-    '''
-    # Callback on detect the motion from motion sensor
-    def on_detect():
-        log.info('motion detected')
-        telemetry = {"motion": True}
-        client.send_telemetry(telemetry)
-        time.sleep(5)
-        # Deactivating the motion in Dashboard
-        client.send_telemetry({"motion": False})
-        log.info("Motion alert deactivated")
-    '''
-    
+
+    # Metodo principal que se encarga de llamar al resto de metodos, para recoger los datos y enviarlos al ThingsBoard
     # Callback from button if it was pressed or unpressed
     def on_event():
         # Adding the callback to the motion sensor
